@@ -24,7 +24,7 @@ def main():
     os.makedirs("output", exist_ok=True)
     
     # 1. Fetch Viral Candidate
-    print("\n[Step 1/4] Scanning & Selecting Viral MrBeast Highlight...")
+    print("\n[Step 1/4] Scanning & Selecting Viral MrBeast Video...")
     candidate = fetch_viral_candidate()
     raw_clip_path = os.path.join(run_dir, "raw_clip.mp4")
     
@@ -33,7 +33,7 @@ def main():
     
     # 3. Generate Metadata & Hooks
     print("\n[Step 2/4] Generating High-CTR Viral Metadata...")
-    meta = generate_metadata(candidate["title"], candidate["segment_name"])
+    meta = generate_metadata(candidate["title"], "Viral Challenge")
     
     # 4. Package 9:16 Vertical Short
     print("\n[Step 3/4] Rendering 1080x1920 Vertical Short...")
@@ -55,8 +55,7 @@ def main():
     )
     
     # 6. Save history to avoid duplicate segments
-    history_key = f"{candidate['id']}_{candidate['segment_name']}"
-    save_history(history_key)
+    save_history(candidate["id"])
     
     print("\n" + "=" * 65)
     print(f"🎉 MRBEAST SHORT PUBLISHED SUCCESSFULLY!")
