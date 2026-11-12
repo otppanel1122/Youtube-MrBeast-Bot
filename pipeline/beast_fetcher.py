@@ -6,13 +6,12 @@ import time
 import imageio_ffmpeg
 import yt_dlp
 
-# Ensure ffmpeg is in PATH for yt-dlp section cutting
+# Ensure ffmpeg is in PATH
 ffmpeg_exe = imageio_ffmpeg.get_ffmpeg_exe()
 ffmpeg_dir = os.path.dirname(ffmpeg_exe)
 if ffmpeg_dir not in os.environ.get("PATH", ""):
     os.environ["PATH"] = ffmpeg_dir + os.pathsep + os.environ.get("PATH", "")
 
-# Ensure ffmpeg.exe exists in directory
 dst_exe = os.path.join(ffmpeg_dir, "ffmpeg.exe" if os.name == "nt" else "ffmpeg")
 if not os.path.exists(dst_exe) and os.path.exists(ffmpeg_exe):
     try:
@@ -50,10 +49,6 @@ def save_history(entry_id):
         pass
 
 def fetch_viral_candidate():
-    """
-    Selects a high-performing video from MrBeast channels, chooses an exciting 30-45s
-    viral highlight (Intro hook, climax, or high-stakes challenge), and downloads only that clip.
-    """
     history = load_history()
     print("[Fetcher] Scanning MrBeast channels for viral candidate...")
     
@@ -61,7 +56,7 @@ def fetch_viral_candidate():
     ydl_opts = {
         'extract_flat': True,
         'playlist_items': '1-10',
-        'extractor_args': {'youtube': {'player_client': ['android', 'ios', 'tv']}},
+        'extractor_args': {'youtube': {'player_client': ['android']}},
         'quiet': True
     }
     
@@ -71,20 +66,17 @@ def fetch_viral_candidate():
             res = ydl.extract_info(channel_url, download=False)
             entries = res.get('entries', [])
         except Exception as e:
-            print(f"[Fetcher] Channel fetch warning: {e}")
+            print(f"[Fetcher] Channel fetch notice: {e}")
             
     if not entries:
-        # Fallback to main channel
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             res = ydl.extract_info("https://www.youtube.com/@MrBeast/videos", download=False)
             entries = res.get('entries', [])
             
-    # Filter out already clipped entries (or different segments)
     candidates = []
     for e in entries:
-        vid_id = e.get('id')
         duration = e.get('duration') or 600
-        if duration >= 90: # Avoid already short clips
+        if duration >= 90:
             candidates.append(e)
             
     if not candidates:
@@ -92,24 +84,18 @@ def fetch_viral_candidate():
         
     chosen = random.choice(candidates[:6])
     vid_id = chosen.get('id')
-    title = chosen.get('title')
+    title = chosen.get('title') or "Insane MrBeast Challenge"
     duration = chosen.get('duration') or 900
     video_url = f"https://www.youtube.com/watch?v={vid_id}"
     
     print(f"[Fetcher] Selected Video: '{title}' ({duration}s)")
     
-    # Choose viral segment window (35 to 45 seconds long):
-    # Segment type 1: High-energy opening hook (0:05 to 0:45)
-    # Segment type 2: Final dramatic showdown/climax (duration - 80s to duration - 40s)
-    # Segment type 3: Mid-video elimination/twist (duration * 0.4 to duration * 0.4 + 40s)
-    
     clip_options = [
-        {"name": "Hook", "start": 8, "end": 44},
-        {"name": "Climax", "start": max(30, int(duration - 75)), "end": max(65, int(duration - 35))},
-        {"name": "Challenge Twist", "start": int(duration * 0.45), "end": int(duration * 0.45) + 38}
+        {"name": "Hook", "start": 8, "end": 42},
+        {"name": "Climax", "start": max(30, int(duration - 75)), "end": max(65, int(duration - 38))},
+        {"name": "Challenge Twist", "start": int(duration * 0.45), "end": int(duration * 0.45) + 35}
     ]
     
-    # Pick a segment that hasn't been used yet for this video
     chosen_segment = None
     for opt in clip_options:
         seg_key = f"{vid_id}_{opt['name']}"
@@ -136,9 +122,6 @@ def fetch_viral_candidate():
     }
 
 def download_video_clip(candidate, output_mp4):
-    """
-    Downloads only the chosen segment in 720p/1080p directly using yt-dlp.
-    """
     os.makedirs(os.path.dirname(output_mp4), exist_ok=True)
     start_time = candidate["start"]
     end_time = candidate["end"]
@@ -146,29 +129,41 @@ def download_video_clip(candidate, output_mp4):
     def download_range_func(info_dict, ydl):
         return [{'start_time': start_time, 'end_time': end_time, 'title': 'viral_segment'}]
 
-    ydl_opts = {
-        'format': 'bestvideo[height<=1080]+bestaudio/best[height<=1080]/best',
-        'download_ranges': download_range_func,
-        'outtmpl': output_mp4,
-        'merge_output_format': 'mp4',
-        'force_keyframes_at_cuts': True,
-        'extractor_args': {'youtube': {'player_client': ['android', 'ios', 'tv']}},
-        'quiet': False
-    }
-
-    print(f"[Fetcher] Downloading {start_time}s-{end_time}s clip from {candidate['url']}...")
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        ydl.download([candidate["url"]])
-
-    if os.path.exists(output_mp4) and os.path.getsize(output_mp4) > 100000:
-        print(f"[Fetcher] Successfully downloaded clip to {output_mp4} ({os.path.getsize(output_mp4) / 1024 / 1024:.2f} MB)")
-        return output_mp4
-    else:
-        # Check if downloaded with part extension or slightly different name
-        base = os.path.splitext(output_mp4)[0]
-        for f in os.listdir(os.path.dirname(output_mp4)):
-            if f.startswith(os.path.basename(base)) and f.endswith(".mp4"):
-                found = os.path.join(os.path.dirname(output_mp4), f)
-                print(f"[Fetcher] Located downloaded file at {found}")
-                return found
-        raise RuntimeError(f"Failed to download clip for {candidate['id']}")
+    # Try android client first (bypasses YouTube datacenter bot checks)
+    clients_to_try = [
+        ['android'],
+        ['android_vr'],
+        ['mweb']
+    ]
+    
+    for client in clients_to_try:
+        ydl_opts = {
+            'format': '18/best[height<=720]/best',
+            'download_ranges': download_range_func,
+            'outtmpl': output_mp4,
+            'merge_output_format': 'mp4',
+            'force_keyframes_at_cuts': True,
+            'extractor_args': {'youtube': {'player_client': client}},
+            'quiet': False
+        }
+        
+        try:
+            print(f"[Fetcher] Attempting download via client '{client[0]}'...")
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                ydl.download([candidate["url"]])
+                
+            if os.path.exists(output_mp4) and os.path.getsize(output_mp4) > 100000:
+                print(f"[Fetcher] Successfully downloaded clip to {output_mp4} ({os.path.getsize(output_mp4) / 1024 / 1024:.2f} MB)")
+                return output_mp4
+        except Exception as e:
+            print(f"[Fetcher] Client '{client[0]}' notice: {e}")
+            
+    # Check if file was saved with alternative name
+    base = os.path.splitext(output_mp4)[0]
+    for f in os.listdir(os.path.dirname(output_mp4)):
+        if f.startswith(os.path.basename(base)) and f.endswith(".mp4"):
+            found = os.path.join(os.path.dirname(output_mp4), f)
+            print(f"[Fetcher] Located downloaded file at {found}")
+            return found
+            
+    raise RuntimeError(f"Failed to download clip for {candidate['id']}")
