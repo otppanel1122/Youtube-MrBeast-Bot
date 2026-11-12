@@ -61,6 +61,7 @@ def fetch_viral_candidate():
     ydl_opts = {
         'extract_flat': True,
         'playlist_items': '1-10',
+        'extractor_args': {'youtube': {'player_client': ['android', 'ios', 'tv']}},
         'quiet': True
     }
     
@@ -146,11 +147,12 @@ def download_video_clip(candidate, output_mp4):
         return [{'start_time': start_time, 'end_time': end_time, 'title': 'viral_segment'}]
 
     ydl_opts = {
-        'format': 'bestvideo[height<=720]+bestaudio/best[height<=720]',
+        'format': 'bestvideo[height<=1080]+bestaudio/best[height<=1080]/best',
         'download_ranges': download_range_func,
         'outtmpl': output_mp4,
         'merge_output_format': 'mp4',
         'force_keyframes_at_cuts': True,
+        'extractor_args': {'youtube': {'player_client': ['android', 'ios', 'tv']}},
         'quiet': False
     }
 

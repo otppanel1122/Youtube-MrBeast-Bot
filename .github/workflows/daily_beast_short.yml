@@ -26,6 +26,11 @@ jobs:
           python-version: '3.11'
           cache: 'pip'
 
+      - name: Set up Deno (YouTube EJS for yt-dlp)
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
       - name: Install System FFmpeg & Fonts
         run: |
           sudo apt-get update
