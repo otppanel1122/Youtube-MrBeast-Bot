@@ -9,13 +9,13 @@ if sys.stdout.encoding != 'utf-8':
         pass
 
 from pipeline.beast_fetcher import fetch_viral_candidate, download_video_clip, save_history
-from pipeline.metadata_generator import generate_metadata
-from pipeline.video_editor import render_mrbeast_short
+from pipeline.commentary_generator import generate_commentary_and_script, render_voiceover
+from pipeline.video_editor import render_transformative_short
 from pipeline.youtube_uploader import upload_video
 
 def main():
     print("=" * 65)
-    print("🎬 24/7 VIRAL MRBEAST SHORTS AUTOMATION PIPELINE")
+    print("🎬 24/7 VIRAL MRBEAST TRANSFORMATIVE SHORTS PIPELINE")
     print("=" * 65)
     
     timestamp = int(time.time())
@@ -24,29 +24,37 @@ def main():
     os.makedirs("output", exist_ok=True)
     
     # 1. Fetch Viral Candidate
-    print("\n[Step 1/4] Scanning & Selecting Viral MrBeast Video...")
+    print("\n[Step 1/5] Selecting Viral MrBeast Highlight...")
     candidate = fetch_viral_candidate()
     raw_clip_path = os.path.join(run_dir, "raw_clip.mp4")
     
     # 2. Download Clip
     download_video_clip(candidate, raw_clip_path)
     
-    # 3. Generate Metadata & Hooks
-    print("\n[Step 2/4] Generating High-CTR Viral Metadata...")
-    meta = generate_metadata(candidate["title"], "Viral Challenge")
+    # 3. Generate Transformative Commentary Script & Metadata
+    print("\n[Step 2/5] Generating Original Narration & High-CTR Metadata...")
+    meta = generate_commentary_and_script(candidate["title"])
     
-    # 4. Package 9:16 Vertical Short
-    print("\n[Step 3/4] Rendering 1080x1920 Vertical Short...")
-    final_output_path = os.path.join("output", f"beast_short_{timestamp}.mp4")
-    render_mrbeast_short(
+    # 4. Generate Voiceover Audio & Synchronized Captions
+    print("\n[Step 3/5] Synthesizing Studio Voiceover Narration...")
+    voice_audio = os.path.join(run_dir, "voiceover.mp3")
+    subtitles_vtt = os.path.join(run_dir, "subtitles.vtt")
+    render_voiceover(meta["narration"], voice_audio, subtitles_vtt)
+    
+    # 5. Render Transformative Vertical Short
+    print("\n[Step 4/5] Rendering Transformative 1080x1920 Short...")
+    final_output_path = os.path.join("output", f"beast_transformative_{timestamp}.mp4")
+    render_transformative_short(
         input_clip=raw_clip_path,
-        title=meta.get("title", candidate["title"]),
-        hook_text=meta.get("hook", "WAIT TILL THE END! 😱"),
+        voiceover_mp3=voice_audio,
+        subtitles_vtt=subtitles_vtt,
+        hook_headline=meta.get("hook_headline", "INSANE MRBEAST BREAKDOWN 🤯"),
+        engagement_text="WOULD YOU DO THIS? 👇",
         output_mp4=final_output_path
     )
     
-    # 5. Upload to YouTube
-    print("\n[Step 4/4] Uploading to YouTube Shorts...")
+    # 6. Upload to YouTube
+    print("\n[Step 5/5] Uploading Transformative Short to YouTube...")
     video_url = upload_video(
         video_path=final_output_path,
         title=meta["title"],
@@ -54,11 +62,11 @@ def main():
         tags=meta["tags"]
     )
     
-    # 6. Save history to avoid duplicate segments
+    # 7. Record History
     save_history(candidate["id"])
     
     print("\n" + "=" * 65)
-    print(f"🎉 MRBEAST SHORT PUBLISHED SUCCESSFULLY!")
+    print("🎉 VIRAL TRANSFORMATIVE SHORT PUBLISHED SUCCESSFULLY!")
     if video_url:
         print(f"🔗 Video URL: {video_url}")
     print("=" * 65)

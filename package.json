@@ -1,0 +1,8 @@
+{
+  "name": "youtube-mrbeast-bot",
+  "version": "1.0.0",
+  "description": "24/7 Viral MrBeast Shorts Automation Engine",
+  "dependencies": {
+    "@heyputer/puter.js": "^0.3.0"
+  }
+}
