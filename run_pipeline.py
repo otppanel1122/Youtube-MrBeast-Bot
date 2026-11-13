@@ -12,6 +12,7 @@ from pipeline.beast_fetcher import fetch_viral_candidate, download_video_clip, s
 from pipeline.commentary_generator import generate_commentary_and_script, render_voiceover
 from pipeline.video_editor import render_transformative_short
 from pipeline.youtube_uploader import upload_video
+from pipeline.facebook_uploader import upload_facebook_reel
 
 def main():
     print("=" * 65)
@@ -54,7 +55,7 @@ def main():
     )
     
     # 6. Upload to YouTube
-    print("\n[Step 5/5] Uploading Transformative Short to YouTube...")
+    print("\n[Step 5/6] Uploading Transformative Short to YouTube...")
     video_url = upload_video(
         video_path=final_output_path,
         title=meta["title"],
@@ -62,13 +63,22 @@ def main():
         tags=meta["tags"]
     )
     
-    # 7. Record History
+    # 7. Upload to Facebook Page Reels
+    print("\n[Step 6/6] Uploading to Facebook Page Reels...")
+    fb_url = upload_facebook_reel(
+        video_path=final_output_path,
+        description=meta["description"]
+    )
+    
+    # 8. Record History
     save_history(candidate["id"])
     
     print("\n" + "=" * 65)
     print("🎉 VIRAL TRANSFORMATIVE SHORT PUBLISHED SUCCESSFULLY!")
     if video_url:
-        print(f"🔗 Video URL: {video_url}")
+        print(f"🔗 YouTube Short: {video_url}")
+    if fb_url:
+        print(f"🔗 Facebook Reel: {fb_url}")
     print("=" * 65)
 
 if __name__ == "__main__":
