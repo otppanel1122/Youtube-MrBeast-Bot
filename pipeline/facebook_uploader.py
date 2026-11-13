@@ -2,6 +2,9 @@ import os
 import sys
 import time
 import requests
+from dotenv import load_dotenv
+
+load_dotenv()
 
 def upload_facebook_reel(video_path, description, page_id=None, page_access_token=None):
     if not page_id:
