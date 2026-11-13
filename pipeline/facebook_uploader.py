@@ -66,6 +66,19 @@ def upload_facebook_reel(video_path, description, page_id=None, page_access_toke
         if finish_res.status_code == 200:
             fb_url = f"https://www.facebook.com/reel/{video_id}"
             print(f"[Facebook] 🎉 FACEBOOK REEL PUBLISHED: {fb_url}")
+            
+            # Also share to Page timeline feed so it appears on both Reels tab and main Page timeline
+            try:
+                feed_url = f"https://graph.facebook.com/v20.0/{page_id}/feed"
+                requests.post(feed_url, data={
+                    "link": fb_url,
+                    "message": description[:500],
+                    "access_token": page_access_token
+                }, timeout=15)
+                print("[Facebook] Shared Reel to main Page timeline feed.")
+            except Exception as e_feed:
+                print(f"[Facebook] Notice sharing to feed: {e_feed}")
+                
             return fb_url
         else:
             print(f"[Facebook] Publish failed ({finish_res.status_code}): {finish_res.text}")
