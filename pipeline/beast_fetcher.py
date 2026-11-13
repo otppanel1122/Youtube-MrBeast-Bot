@@ -69,6 +69,20 @@ FALLBACK_VIRAL_CLIPS = [
 
 HISTORY_FILE = "history.json"
 
+def get_ydl_instance(extra_cli_args=None, base_opts=None):
+    cli_args = ['--impersonate', 'Chrome-131']
+    if extra_cli_args:
+        cli_args.extend(extra_cli_args)
+    try:
+        parsed = yt_dlp.parse_options(cli_args)
+        opts = dict(parsed[3])
+        if base_opts:
+            opts.update(base_opts)
+        return yt_dlp.YoutubeDL(opts)
+    except Exception as e:
+        print(f"[Fetcher] Impersonate setup note: {e}, using default options")
+        return yt_dlp.YoutubeDL(base_opts or {})
+
 def load_history():
     if os.path.exists(HISTORY_FILE):
         try:
@@ -95,14 +109,10 @@ def fetch_viral_candidate():
     
     entries = []
     source_url = random.choice(SOURCES)
-    ydl_opts = {
-        'extract_flat': True,
-        'playlist_items': '1-25',
-        'quiet': True
-    }
     
     try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        ydl = get_ydl_instance(base_opts={'extract_flat': True, 'playlist_items': '1-25', 'quiet': True})
+        with ydl:
             res = ydl.extract_info(source_url, download=False)
             raw_entries = res.get('entries', []) if res else []
             for e in raw_entries:
@@ -115,9 +125,9 @@ def fetch_viral_candidate():
     except Exception as e:
         print(f"[Fetcher] Notice fetching live profile: {e}")
         
-    # If live extraction had zero entries (e.g. data center IP block on profile scraping), use curated pool
+    # If live extraction had zero entries (e.g. data center IP block on profile page), use curated pool
     if not entries:
-        print("[Fetcher] Live profile feed unavailable or blocked; activating curated viral MrBeast pool.")
+        print("[Fetcher] Live profile feed unavailable or empty; activating curated viral MrBeast pool.")
         entries = list(FALLBACK_VIRAL_CLIPS)
         
     # Filter out already clipped entries
@@ -145,7 +155,7 @@ def download_video_clip(candidate, output_mp4):
     os.makedirs(os.path.dirname(output_mp4), exist_ok=True)
     video_url = candidate["url"]
     
-    ydl_opts = {
+    base_opts = {
         'outtmpl': output_mp4,
         'merge_output_format': 'mp4',
         'quiet': False
@@ -153,7 +163,8 @@ def download_video_clip(candidate, output_mp4):
     
     print(f"[Fetcher] Downloading clip from {video_url}...")
     try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        ydl = get_ydl_instance(base_opts=base_opts)
+        with ydl:
             ydl.download([video_url])
     except Exception as e:
         print(f"[Fetcher] Download error on primary URL: {e}")
@@ -162,8 +173,9 @@ def download_video_clip(candidate, output_mp4):
             if fb["id"] != candidate["id"]:
                 print(f"[Fetcher] Attempting fallback clip: {fb['url']}")
                 try:
-                    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                        ydl.download([fb["url"]])
+                    ydl_fb = get_ydl_instance(base_opts=base_opts)
+                    with ydl_fb:
+                        ydl_fb.download([fb["url"]])
                     candidate["id"] = fb["id"]
                     candidate["title"] = fb["title"]
                     candidate["url"] = fb["url"]
