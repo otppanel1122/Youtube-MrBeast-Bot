@@ -184,7 +184,7 @@ def render_transformative_short(input_clip, voiceover_mp3, subtitles_vtt, hook_h
 
     if has_audio:
         audio_filters = (
-            f"[0:a]volume=0.15[bg_a];"
+            f"[0:a]volume=0.05[bg_a];"
             f"[2:a]volume=1.0[narr_a];"
             f"[bg_a][narr_a]amix=inputs=2:duration=first[out_a]"
         )
