@@ -94,37 +94,40 @@ Return ONLY valid JSON matching this schema:
 }}
 """
     if GEMINI_API_KEY:
-        try:
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key={GEMINI_API_KEY}"
-            resp = requests.post(
-                url,
-                headers={"Content-Type": "application/json"},
-                json={
-                    "contents": [{"parts": [{"text": prompt}]}],
-                    "generationConfig": {"temperature": 0.85, "response_mime_type": "application/json"}
-                },
-                timeout=15
-            )
-            if resp.status_code == 200:
-                data = resp.json()
-                text = data["candidates"][0]["content"]["parts"][0]["text"]
-                res = json.loads(text)
-                return {
-                    "narration": res.get("narration"),
-                    "hook_headline": res.get("hook_headline", "CAN HE WIN?! 😱"),
-                    "title": res.get("title", f"{clean_title.upper()} 😱 #Shorts #MrBeast"),
-                    "description": (
-                        f"{clean_title.upper()} 😱\n\n"
-                        f"{res.get('question', 'Would you attempt this challenge?')}\n"
-                        f"Tell us in the comments below! 👇\n\n"
-                        f"Transformative reaction analysis and commentary breakdown.\n"
-                        f"Credit: Original video by @MrBeast\n\n"
-                        f"#MrBeast #Challenge #Shorts #Reaction #Viral #Trending"
-                    ),
-                    "tags": ["mrbeast", "mrbeast challenge", "viral", "shorts", "reaction", "extreme challenge"]
-                }
-        except Exception:
-            pass
+        models = ["gemini-3-flash-preview", "gemini-flash-lite-latest"]
+        for m in models:
+            try:
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/{m}:generateContent?key={GEMINI_API_KEY}"
+                resp = requests.post(
+                    url,
+                    headers={"Content-Type": "application/json"},
+                    json={
+                        "contents": [{"parts": [{"text": prompt}]}],
+                        "generationConfig": {"temperature": 0.9, "response_mime_type": "application/json"}
+                    },
+                    timeout=20
+                )
+                if resp.status_code == 200:
+                    data = resp.json()
+                    text = data["candidates"][0]["content"]["parts"][0]["text"]
+                    res = json.loads(text)
+                    if res.get("narration"):
+                        return {
+                            "narration": res.get("narration"),
+                            "hook_headline": res.get("hook_headline", "CAN HE WIN?! 😱"),
+                            "title": res.get("title", f"{clean_title.upper()} 😱 #Shorts #MrBeast"),
+                            "description": (
+                                f"{clean_title.upper()} 😱\n\n"
+                                f"{res.get('question', 'Would you attempt this challenge?')}\n"
+                                f"Tell us in the comments below! 👇\n\n"
+                                f"Transformative reaction analysis and commentary breakdown.\n"
+                                f"Credit: Original video by @MrBeast\n\n"
+                                f"#MrBeast #Challenge #Shorts #Reaction #Viral #Trending"
+                            ),
+                            "tags": ["mrbeast", "mrbeast challenge", "viral", "shorts", "reaction", "extreme challenge"]
+                        }
+            except Exception:
+                continue
 
     # High-quality dynamic fallback
     hooks = [
